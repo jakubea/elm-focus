@@ -8,6 +8,7 @@ import Html.Styled.Attributes as Attributes
 import Html.Styled.Events as Events
 
 
+
 ---- MODEL ----
 
 
@@ -47,38 +48,38 @@ type InputId
     | City
 
 
-type AddressType
+type AddressInputId
     = Billing InputId
     | Delivery InputId
 
 
 type Msg
-    = InsertedValue AddressType String
+    = InsertedValue AddressInputId String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        InsertedValue field value ->
-            ( setValue model field value, Cmd.none )
+        InsertedValue addressInputId value ->
+            ( setValue model addressInputId value, Cmd.none )
 
 
-setValue : Model -> AddressType -> String -> Model
-setValue model field value =
-    Focus.set (getFocus field) value model
+setValue : Model -> AddressInputId -> String -> Model
+setValue model addressInputId value =
+    Focus.set (getFocus addressInputId) value model
 
 
-getValue : Model -> AddressType -> String
-getValue model field =
-    Focus.get (getFocus field) model
+getValue : Model -> AddressInputId -> String
+getValue model addressInputId =
+    Focus.get (getFocus addressInputId) model
 
 
 
 -- FOCI
 
 
-getFocus : AddressType -> Focus.Focus Model String
-getFocus field =
+getFocus : AddressInputId -> Focus.Focus Model String
+getFocus addressInputId =
     let
         billingAddressFocus =
             Focus.create .billingAddress (\f model -> { model | billingAddress = f model.billingAddress })
@@ -86,12 +87,12 @@ getFocus field =
         deliveryAddressFocus =
             Focus.create .deliveryAddress (\f model -> { model | deliveryAddress = f model.deliveryAddress })
     in
-        case field of
-            Billing inputId ->
-                (Focus.compose billingAddressFocus (inputFocus inputId))
+    case addressInputId of
+        Billing inputId ->
+            Focus.compose billingAddressFocus (inputFocus inputId)
 
-            Delivery inputId ->
-                (Focus.compose deliveryAddressFocus (inputFocus inputId))
+        Delivery inputId ->
+            Focus.compose deliveryAddressFocus (inputFocus inputId)
 
 
 inputFocus : InputId -> Focus.Focus Address String
@@ -132,7 +133,7 @@ view model =
         ]
 
 
-addressFormView : String -> (InputId -> AddressType) -> Model -> Html Msg
+addressFormView : String -> (InputId -> AddressInputId) -> Model -> Html Msg
 addressFormView heading addressType model =
     columnView
         [ Html.h3 [] [ Html.text heading ]
@@ -144,44 +145,45 @@ addressFormView heading addressType model =
         ]
 
 
-inputView : String -> Model -> AddressType -> Html Msg
-inputView text model field =
+inputView : String -> Model -> AddressInputId -> Html Msg
+inputView text model addressInputId =
     let
         value =
-            getValue model field
+            getValue model addressInputId
     in
-        Html.div
-            [ Attributes.css
-                [ Css.padding <| Css.px 5
-                , Css.width <| Css.pct 100
-                , Css.displayFlex
-                , Css.flexDirection Css.row
-                , Css.justifyContent Css.spaceBetween
-                ]
+    Html.div
+        [ Attributes.css
+            [ Css.padding <| Css.px 5
+            , Css.width <| Css.pct 100
+            , Css.displayFlex
+            , Css.flexDirection Css.row
+            , Css.justifyContent Css.spaceBetween
             ]
-            [ Html.label [] [ Html.text <| text ++ ": " ]
-            , Html.input [ Events.onInput <| InsertedValue field, Attributes.value value ] []
-            ]
+        ]
+        [ Html.label [] [ Html.text <| text ++ ": " ]
+        , Html.input [ Events.onInput <| InsertedValue addressInputId, Attributes.value value ] []
+        ]
 
 
-addressView : String -> (InputId -> AddressType) -> Model -> Html Msg
+addressView : String -> (InputId -> AddressInputId) -> Model -> Html Msg
 addressView heading addressType model =
     let
-        value field =
-            getValue model <| addressType field
+        listView ( text, inputId ) =
+            labelAndValueView text (getValue model <| addressType inputId)
     in
-        columnView <|
-            [ Html.h3 [] [ Html.text heading ]
-            , boldSpanView "First name: " <| value FirstName
-            , boldSpanView "Last name: " <| value LastName
-            , boldSpanView "Street: " <| value Street
-            , boldSpanView "ZIP: " <| value Zip
-            , boldSpanView "City: " <| value City
-            ]
+    columnView <|
+        Html.h3 [] [ Html.text heading ]
+            :: List.map listView
+                [ ( "First name: ", FirstName )
+                , ( "Last name: ", LastName )
+                , ( "Street: ", Street )
+                , ( "ZIP: ", Zip )
+                , ( "City: ", City )
+                ]
 
 
-boldSpanView : String -> String -> Html Msg
-boldSpanView label value =
+labelAndValueView : String -> String -> Html Msg
+labelAndValueView label value =
     Html.span []
         [ Html.span [ Attributes.css [ Css.fontWeight Css.bold ] ] [ Html.text label ]
         , Html.span [] [ Html.text value ]
